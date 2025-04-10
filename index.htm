@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple LiDAR Simulator - Three.js</title>
+    <title>Simple LiDAR Simulator - Three.js (Refresh Cycling)</title>
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; }
@@ -15,14 +15,16 @@
             background-color: rgba(255, 255, 255, 0.7);
             padding: 10px;
             border-radius: 5px;
-            z-index: 10;
+            z-index: 10; /* Ensure it's above the canvas */
             font-size: 16px;
             font-family: sans-serif;
+            pointer-events: none; /* Prevent text from interfering with clicks if needed */
         }
     </style>
 </head>
 <body>
-    <div id="modeText">Hit j to change modes</div>
+    <div id="modeText">Mode: main.js</div>
+
     <script type="importmap">
         {
             "imports": {
@@ -31,54 +33,62 @@
             }
         }
     </script>
-    <script type="module" src="main.js"></script>
+
     <script>
-        const scripts = [
+        const SCRIPT_STORAGE_KEY = 'lidarNextScript';
+        const modeTextElement = document.getElementById('modeText');
+        const scripts = [ // List of scripts to cycle through
             "main.js",
             "main_v1.js",
             "main_v2.js",
             "main_v3.js",
             "main_v4.js"
         ];
-        let currentScriptIndex = 0;
-        const body = document.querySelector('body');
-        const modeText = document.getElementById('modeText');
 
-        function loadScript(src) {
-            return new Promise((resolve, reject) => {
-                const script = document.createElement('script');
-                script.type = 'module';
-                script.src = src;
-                script.onload = resolve;
-                script.onerror = reject;
-                // Remove any existing script tags with type="module" *before* adding the new one
-                const existingScript = document.querySelector('script[type="module"]');
-                if (existingScript) {
-                    existingScript.remove();
-                }
-                body.appendChild(script);
-            });
+        // --- Script Loading Logic (runs on page load) ---
+        // Check if localStorage has a script specified from the previous cycle
+        let scriptToLoad = localStorage.getItem(SCRIPT_STORAGE_KEY);
+
+        if (scriptToLoad && scripts.includes(scriptToLoad)) {
+            // If a valid script name is found in storage, write the script tag for it
+            document.write(`<script type="module" id="mainModuleScript" src="${scriptToLoad}"><\/script>`);
+            console.log(`Loading script from localStorage: ${scriptToLoad}`);
+            // Update mode text display
+            modeTextElement.textContent = `Mode: ${scriptToLoad.replace('.js', '').replace('main', 'Mode ')}`;
+            // Clear the storage item so it doesn't affect manual refreshes
+            localStorage.removeItem(SCRIPT_STORAGE_KEY);
+        } else {
+            // Otherwise, load the default script (main.js)
+            scriptToLoad = "main.js"; // Ensure scriptToLoad variable is set for the listener
+            document.write('<script type="module" id="mainModuleScript" src="main.js"><\/script>');
+            console.log('Loading default script: main.js');
+            // Update mode text display for the default
+            modeTextElement.textContent = `Mode: main.js`;
         }
 
-        async function cycleScripts() {
-            currentScriptIndex = (currentScriptIndex + 1) % scripts.length;
-            const nextScript = scripts[currentScriptIndex];
-            modeText.textContent = `Mode: ${nextScript.replace('.js', '').replace('main', 'Mode ')}`; //Update the text
-            try {
-                await loadScript(nextScript);
-                console.log(`Loaded script: ${nextScript}`);
-            } catch (error) {
-                console.error(`Failed to load script: ${nextScript}`, error);
-                // Consider how to handle the error, e.g., try loading the next script, or stop.
-                // For now, let's just log and continue to the next.
-            }
-        }
-
-        document.addEventListener('keydown', (event) => {
+        // --- Keydown listener to set the *next* script and reload ---
+        // Attach listener to 'window' instead of 'document' for better focus handling
+        window.addEventListener('keydown', (event) => {
+            // Check if the pressed key is 'j'
             if (event.key === 'j') {
-                cycleScripts();
+                // Prevent default action if 'j' might trigger something else (e.g., browser find)
+                event.preventDefault();
+
+                // Find the index of the *currently* loaded script
+                const currentScriptIndex = scripts.indexOf(scriptToLoad);
+                // Calculate the index of the *next* script, wrapping around using modulo
+                const nextScriptIndex = (currentScriptIndex + 1) % scripts.length;
+                const nextScript = scripts[nextScriptIndex];
+
+                // Store the *next* script name in localStorage for the reload
+                localStorage.setItem(SCRIPT_STORAGE_KEY, nextScript);
+                console.log(`Setting next script to ${nextScript} and reloading...`);
+
+                // Reload the page to apply the change
+                window.location.reload();
             }
         });
     </script>
-</body>
+
+    </body>
 </html>
