@@ -7,17 +7,78 @@
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; }
+        #modeText {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(255, 255, 255, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 10;
+            font-size: 16px;
+            font-family: sans-serif;
+        }
     </style>
 </head>
 <body>
+    <div id="modeText">Hit j to change modes</div>
     <script type="importmap">
         {
             "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
             }
         }
     </script>
     <script type="module" src="main.js"></script>
+    <script>
+        const scripts = [
+            "main.js",
+            "main_v1.js",
+            "main_v2.js",
+            "main_v3.js",
+            "main_v4.js"
+        ];
+        let currentScriptIndex = 0;
+        const body = document.querySelector('body');
+        const modeText = document.getElementById('modeText');
+
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.type = 'module';
+                script.src = src;
+                script.onload = resolve;
+                script.onerror = reject;
+                // Remove any existing script tags with type="module" *before* adding the new one
+                const existingScript = document.querySelector('script[type="module"]');
+                if (existingScript) {
+                    existingScript.remove();
+                }
+                body.appendChild(script);
+            });
+        }
+
+        async function cycleScripts() {
+            currentScriptIndex = (currentScriptIndex + 1) % scripts.length;
+            const nextScript = scripts[currentScriptIndex];
+            modeText.textContent = `Mode: ${nextScript.replace('.js', '').replace('main', 'Mode ')}`; //Update the text
+            try {
+                await loadScript(nextScript);
+                console.log(`Loaded script: ${nextScript}`);
+            } catch (error) {
+                console.error(`Failed to load script: ${nextScript}`, error);
+                // Consider how to handle the error, e.g., try loading the next script, or stop.
+                // For now, let's just log and continue to the next.
+            }
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'j') {
+                cycleScripts();
+            }
+        });
+    </script>
 </body>
 </html>
